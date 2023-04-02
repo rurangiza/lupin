@@ -1,2 +1,1 @@
-# lupin
-Building an interpreter
+# Jlox
