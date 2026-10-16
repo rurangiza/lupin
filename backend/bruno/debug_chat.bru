@@ -1,0 +1,31 @@
+meta {
+  name: debug_chat
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_api_url}}/debug/chat
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "text": "What's the weather like in Brussels today?",
+    "chat_id": "bruno"
+  }
+}
+
+docs {
+  Needs DEBUG_API_ENABLED=true. Goes through the same assistant as Telegram,
+  on its own "debug" channel. Send "/new" to start a fresh conversation.
+
+  ```json
+  {
+    "reply": "...",
+    "tool_calls": [{ "name": "web_search", "output": "...", "is_error": false }],
+    "usage": { "input_tokens": 812, "output_tokens": 95 }
+  }
+  ```
+}
