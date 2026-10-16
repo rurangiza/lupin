@@ -1,4 +1,3 @@
-# Backend
+# Lupin backend
 
-### Local Testing
-1. Launch Docker daemon
+See the [project README](../README.md) for how to run, test and extend it.

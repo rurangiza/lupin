@@ -1,16 +1,66 @@
+name: lupin
+
+x-app: &app
+  build: ./backend
+  image: lupin-backend:local
+  env_file: .env
+  environment:
+    DATABASE_URL: postgresql+asyncpg://lupin:${POSTGRES_PASSWORD:-lupin}@db:5432/lupin
+  networks: [lupin]
+
 services:
-  backend:
-    build: ./backend
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: lupin
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-lupin}
+      POSTGRES_DB: lupin
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lupin -d lupin"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks: [lupin]
+    # Uncomment to reach the database from a GUI on your machine.
+    # ports: ["127.0.0.1:5432:5432"]
+
+  migrate:
+    <<: *app
+    command: ["alembic", "upgrade", "head"]
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    <<: *app
     ports:
-      - "8080:8000"
-    env_file: ".env"
+      - "127.0.0.1:8080:8000"
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
     develop:
       watch:
-        - action: sync
-          path: ./backend
-          target: /app
-          ignore:
-            - __pycache__/
         - action: rebuild
-          path: package.json
-    command: "uvicorn graymatter.main:app --host 0.0.0.0 --port 8000 --reload"
+          path: ./backend/src
+        - action: rebuild
+          path: ./backend/uv.lock
+
+  # Public HTTPS URL for Telegram webhooks (and later, phone calls).
+  # Only runs with: docker compose --profile tunnel up
+  cloudflared:
+    image: cloudflare/cloudflared:2026.10.0
+    profiles: [tunnel]
+    command: ["tunnel", "--no-autoupdate", "--metrics", "0.0.0.0:2000", "--url", "http://api:8000"]
+    restart: unless-stopped
+    depends_on: [api]
+    networks: [lupin]
+
+networks:
+  lupin:
+
+volumes:
+  pgdata:

@@ -1,34 +1,31 @@
 # https://taskfile.dev
-
-version: '3'
-
-vars:
-  GREETING: Hello, World!
+version: "3"
 
 tasks:
-  default:
+  up:
+    desc: Start Lupin locally (Telegram long polling)
+    dir: ..
+    cmds: [docker compose up --build]
+  up:tunnel:
+    desc: Start with a cloudflared quick tunnel (set TELEGRAM_MODE=webhook in .env)
+    dir: ..
+    cmds: [docker compose --profile tunnel up --build]
+  down:
+    dir: ..
+    cmds: [docker compose --profile tunnel down]
+  logs:
+    dir: ..
+    cmds: [docker compose logs -f api]
+  psql:
+    desc: Open a psql shell on the local database
+    dir: ..
+    cmds: [docker compose exec db psql -U lupin]
+  test:
+    cmds: [uv run pytest]
+  lint:
     cmds:
-      - echo "{{.GREETING}}"
-    silent: true
-  start-local:
-    # starts fastapi server locally
-    cmds:
-      - fastapi run ./src/graymatter/main.py --reload
-  build:*:
-    # builds image with specified tag
-    vars:
-      IMAGE_NAME: "{{index .MATCH 0}}"
-    cmds:
-      - docker build -t {{.IMAGE_NAME}} .
-  start-docker:*:
-    # starts container on port 8080
-    vars:
-      IMAGE_NAME: "{{index .MATCH 0}}"
-    cmds:
-      - docker container run -it -p 8080:8000 {{.IMAGE_NAME}} sh
-  exec:*:*:
-    # execute bash command inside running container
-    vars:
-      IMAGE_NAME: "{{index .MATCH 0}}"
-    cmds:
-      - docker container exec -it {{.IMAGE_NAME}} 
+      - uv run ruff check .
+      - uv run ruff format --check .
+  migration:
+    desc: "Generate a migration from model changes (needs the db running): task migration -- 'message'"
+    cmds: [uv run alembic revision --autogenerate -m "{{.CLI_ARGS}}"]
